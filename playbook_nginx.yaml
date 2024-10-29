@@ -1,0 +1,109 @@
+# ---
+# - hosts: nginx
+#   become: yes
+#   vars:
+#     repo_url: "https://github.com/juniyasyos/portofolio.git"
+#     web_root: "/var/www/html"
+#     clone_dir: "{{ web_root }}/porto" 
+
+#   tasks:
+#     - name: Update apt cache
+#       apt:
+#         update_cache: yes
+
+#     - name: Install Nginx and Git
+#       apt:
+#         name:
+#           - nginx
+#           - git
+#         state: present
+
+#     - name: Start Nginx service
+#       service:
+#         name: nginx
+#         state: started
+#         enabled: yes
+
+#     - name: Clone the portofolio repository
+#       git:
+#         repo: "{{ repo_url }}"
+#         dest: "{{ clone_dir }}"
+#         update: yes
+#         force: yes
+
+#     - name: Remove existing HTML files from web root
+#       file:
+#         path: "{{ web_root }}"
+#         state: absent
+#       ignore_errors: yes
+
+#     - name: Re-create web root directory
+#       file:
+#         path: "{{ web_root }}"
+#         state: directory
+
+#     - name: Copy cloned files to the web root
+#       copy:
+#         src: "{{ clone_dir }}/"
+#         dest: "{{ web_root }}/"
+#         remote_src: yes
+
+#     - name: Restart Nginx service to apply changes
+#       service:
+#         name: nginx
+#         state: restarted
+
+---
+- hosts: nginx
+  become: yes
+  vars:
+    repo_url: "https://github.com/juniyasyos/portofolio.git"
+    web_root: "/var/www/html"
+    clone_dir: "{{ web_root }}/porto" 
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx and Git
+      apt:
+        name:
+          - nginx
+          - git
+        state: present
+
+    - name: Start Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Clone the portofolio repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ clone_dir }}"
+        update: yes
+        force: yes
+
+    - name: Debug Check if files exist in clone_dir
+      command: ls {{ clone_dir }}
+      register: cloned_files
+      ignore_errors: yes
+
+    - name: Debug Show cloned files
+      debug:
+        var: cloned_files.stdout_lines
+
+    - name: Remove existing HTML files from web root
+      command: rm -rf {{ web_root }}/*.html
+      ignore_errors: yes
+
+    - name: Copy the new files to the web root
+      command: mv {{ clone_dir }}/* {{ web_root }}/
+      when: cloned_files.stdout | length > 0
+
+    - name: Restart Nginx service to apply changes
+      service:
+        name: nginx
+        state: restarted

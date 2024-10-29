@@ -1,0 +1,55 @@
+---
+- hosts: apache
+  become: yes
+  vars:
+    repo_url: "https://github.com/juniyasyos/chatbot-project.git" 
+    web_root: "/var/www/html"
+    clone_dir: "{{ web_root }}/porto" 
+    dist_dir: "dist"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Apache and Git
+      apt:
+        name:
+          - apache2
+          - git
+        state: present
+
+    - name: Start Apache service
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Remove existing HTML files from web root
+      command: rm -rf {{ web_root }}/*.html
+      ignore_errors: yes
+
+    - name: Clone the chatbot repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ clone_dir }}"
+        update: yes
+        force: yes
+
+    - name: Check if dist directory exists
+      command: ls {{ clone_dir }}/{{ dist_dir }}
+      register: dist_files
+      ignore_errors: yes
+
+    - name: Debug Show files in dist directory
+      debug:
+        var: dist_files.stdout_lines
+
+    - name: Move files from dist directory to web root
+      command: mv {{ clone_dir }}/{{ dist_dir }}/* {{ web_root }}
+      when: dist_files.stdout | length > 0
+
+    - name: Restart Apache service to apply changes
+      service:
+        name: apache2
+        state: restarted
